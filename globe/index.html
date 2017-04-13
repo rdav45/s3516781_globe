@@ -1,0 +1,701 @@
+<html>
+<head>
+<title>Globe</title>
+<meta http-equiv="content-type" content="text/html; charset=ISO-8859-1">
+<script type="text/javascript" src="libs/gl-matrix-min.js"></script>
+<script type="text/javascript" src="src/webgl.js"></script>
+<script type="text/javascript" src="src/sphericalUtils.js"></script>
+<script type="text/javascript" src="libs/CubicSpline.js"></script>
+<script type="text/javascript" src="libs/sylvester-0-1-3/sylvester.js"></script>
+<script type="text/javascript" src="src/interaction.js"></script>
+<style>
+body {
+	margin: 0;
+	overflow: hidden;
+	background-color: #CCC;
+}
+</style>
+<script type="text/javascript">
+    var gl;
+    //FIXME
+    var shaderProgram;
+    
+    function degToRad(degrees) {
+        return degrees * Math.PI / 180;
+    }
+   
+    var currentProgram;
+    var vectorProgram;
+    var rasterProgram;
+
+    function initShaders() {
+        //var rasterFragmentShader = getShader(gl, "shader-r-fs");
+        //var rasterVertexShader = getShader(gl, "shader-r-vs");
+        
+        var rasterFragmentShader = loadShaders(gl, "fs/rasterImage.frag");
+        var rasterVertexShader = loadShaders(gl, "vs/rasterImage.vert");
+        
+        
+        var vectorFragmentShader = loadShaders(gl, "fs/vectorLineData.frag");
+        var vectorVertexShader = loadShaders(gl, "vs/vectorLineData.vert");
+
+        //FIXME shaderProgram = gl.createProgram();
+        rasterProgram = gl.createProgram(); 
+        gl.attachShader(rasterProgram, rasterVertexShader[0]);
+        gl.attachShader(rasterProgram, rasterFragmentShader[0]);
+        gl.linkProgram(rasterProgram);
+        
+        if (!gl.getProgramParameter(rasterProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise rasterShaders");
+        }
+        
+        setupProgram(rasterProgram); 
+       
+        vectorProgram = gl.createProgram(); 
+        gl.attachShader(vectorProgram, vectorVertexShader[0]);
+        gl.attachShader(vectorProgram, vectorFragmentShader[0]);
+        gl.linkProgram(vectorProgram);
+        
+        if (!gl.getProgramParameter(vectorProgram, gl.LINK_STATUS)) {
+            alert("Could not initialise vectorShaders");
+        }
+        
+       setupProgram(vectorProgram);
+
+        
+		/*
+        gl.useProgram(rasterProgram);
+
+        rasterProgram.vertexPositionAttribute = gl.getAttribLocation(rasterProgram, "aVertexPosition");
+        gl.enableVertexAttribArray(rasterProgram.vertexPositionAttribute);
+
+       // shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
+        //console.log("info: "+ shaderProgram.vertexPositionAttribute);
+
+        rasterProgram.pMatrixUniform = gl.getUniformLocation(rasterProgram, "uPMatrix");
+        rasterProgram.mvMatrixUniform = gl.getUniformLocation(rasterProgram, "uMVMatrix");
+        rasterProgram.samplerUniform = gl.getUniformLocation(rasterProgram, "uSampler");
+        rasterProgram.meridianRotationUniform = gl.getUniformLocation(rasterProgram, "uMeridianRotation");
+        rasterProgram.sinLatPoleUniform = gl.getUniformLocation(rasterProgram, "uSinLatPole");        
+        rasterProgram.cosLatPoleUniform = gl.getUniformLocation(rasterProgram, "uCosLatPole");
+        rasterProgram.viewportHeightUniform = gl.getUniformLocation(rasterProgram, "uViewportHeight");
+        rasterProgram.radiusUniform = gl.getUniformLocation(rasterProgram, "uRadius");
+        rasterProgram.splineValsUniform = gl.getUniformLocation(rasterProgram, "uSplineVals")
+		
+*/
+        
+    }
+    
+
+
+    function handleLoadedTexture(textures) {
+        //dgl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+
+        gl.bindTexture(gl.TEXTURE_2D, textures[0]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[0].image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+
+        gl.bindTexture(gl.TEXTURE_2D, textures[1]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[1].image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+
+        gl.bindTexture(gl.TEXTURE_2D, textures[2]);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, textures[2].image);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_NEAREST);
+        gl.generateMipmap(gl.TEXTURE_2D);
+
+        gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+
+
+    var crateTextures = Array();
+
+    function initTexture() {
+        var crateImage = new Image();
+
+        for (var i=0; i < 3; i++) {
+            var texture = gl.createTexture();
+            texture.image = crateImage;
+            crateTextures.push(texture);
+        }
+
+        crateImage.onload = function () {
+            handleLoadedTexture(crateTextures)
+        }
+        crateImage.src = "data/earth3.jpg"; //"data/gradnetz.png"; //data/earth.jpg";//"data/earth2.jpg";//
+    }
+
+
+    var mvMatrix = mat4.create();
+    var mvMatrixStack = [];
+    var pMatrix = mat4.create();
+
+    function mvPushMatrix() {
+        var copy = mat4.create();
+        mat4.set(mvMatrix, copy);
+        mvMatrixStack.push(copy);
+    }
+
+    function mvPopMatrix() {
+        if (mvMatrixStack.length == 0) {
+            throw "Invalid popMatrix!";
+        }
+        mvMatrix = mvMatrixStack.pop();
+    }
+
+
+    function setMatrixUniforms(program) {
+        gl.uniformMatrix4fv(program.pMatrixUniform, false, pMatrix);
+        gl.uniformMatrix4fv(program.mvMatrixUniform, false, mvMatrix);
+    }
+	
+	function createSplineVals32(){
+		var splineVals32 = new Float32Array(splineVals);
+        //var length = 0;
+        for(i in splineVals32) {
+            splineVals32[i] = parseFloat(splineVals32[i] * Math.PI / 180);
+            //length++;
+            //console.log(splineVals32);
+        }
+        //console.log(length);
+		return splineVals32;
+	}
+    
+    function createSplineRasterVals32(){
+		var splineRasterVals32 = new Float32Array(splineRasterVals);
+        //var length = 0;
+        for(i in splineRasterVals32) {
+            splineRasterVals32[i] = parseFloat(splineRasterVals32[i] * Math.PI / 180);
+            //length++;
+            //console.log(splineRasterVals32);
+        }
+        //console.log(length);
+		return splineRasterVals32;
+	}
+	
+	function setRasterUniforms(splineRasterVals32){
+	    gl.uniform1f(rasterProgram.meridianRotationUniform, meridian * 6.28 - 3.14);
+        gl.uniform1f(rasterProgram.sinLatPoleUniform, Math.sin(pole * Math.PI / 180));
+        gl.uniform1f(rasterProgram.cosLatPoleUniform, Math.cos(pole * Math.PI / 180));   
+        gl.uniform1f(rasterProgram.viewportHeightUniform, gl.viewportHeight);        
+        gl.uniform1f(rasterProgram.radiusUniform, radius);
+        gl.uniform1fv(rasterProgram.splineValsUniform, splineRasterVals32);
+	//	console.log(meridian, pole, radius);
+	}
+	
+	function setVectorUniforms(splineVals32){
+	    gl.uniform1f(vectorProgram.meridianRotationUniform, meridian * 6.28 - 3.14);
+        gl.uniform1f(vectorProgram.sinLatPoleUniform, Math.sin(pole * Math.PI / 180));
+        gl.uniform1f(vectorProgram.cosLatPoleUniform, Math.cos(pole * Math.PI / 180));   
+        gl.uniform1f(vectorProgram.viewportHeightUniform, gl.viewportHeight);        
+        gl.uniform1f(vectorProgram.radiusUniform, radius)
+        gl.uniform1fv(vectorProgram.splineValsUniform, splineVals32);
+		//console.log(meridian, pole, radius);
+	}
+
+
+    function degToRad(degrees) {
+        return degrees * Math.PI / 180;
+    }
+
+
+    var xRot = 0;
+    var xSpeed = 0;
+
+    var yRot = 0;
+    var ySpeed = 0;
+
+	//FIXME z not used
+    var z = -2.4;
+
+    var filter = 1;
+    var shift = false;
+    
+    var meridian = 0;
+    var pole = 90;
+	//FIXME 
+    var radius = 800/2.0;
+    
+    var equatorV =0;
+    var equatorR = 0;
+    var spline = new CubicSpline(-90, equatorV, 90);
+    var splineRaster = new CubicSpline(-90, equatorR, 90);
+    var splineRasterVals = splineRaster.getSplineCoefficients();
+    //console.log(spline);
+    var splineVals = spline.getSplineCoefficients();
+    //console.log(splineVals);    
+
+
+    var diskVertexPositionBuffer;
+    //var diskVertexTextureCoordBuffer;
+    var diskVertexIndexBuffer;
+	
+    function initRasterBuffers() {
+        diskVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, diskVertexPositionBuffer);
+        vertices = [
+            // Front face
+            -1.0, -1.0,  0.0,
+             1.0, -1.0,  0.0,
+             1.0,  1.0,  0.0,
+            -1.0,  1.0,  0.0
+        ]
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        diskVertexPositionBuffer.itemSize = 3;
+        diskVertexPositionBuffer.numItems = 4;
+
+/*
+        diskVertexTextureCoordBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, diskVertexTextureCoordBuffer);
+        var textureCoords = [
+            // Front face
+            0.0, 0.0,
+            1.0, 0.0,
+            1.0, 1.0,
+            0.0, 1.0
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(textureCoords), gl.STATIC_DRAW);
+        diskVertexTextureCoordBuffer.itemSize = 2;
+        diskVertexTextureCoordBuffer.numItems = 4;
+		*/
+
+        diskVertexIndexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, diskVertexIndexBuffer);
+        var diskVertexIndices = [
+            0, 1, 2,      0, 2, 3
+        ];
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(diskVertexIndices), gl.STATIC_DRAW);
+        diskVertexIndexBuffer.itemSize = 1;
+        diskVertexIndexBuffer.numItems = 6;
+    }
+	
+	
+	var triangleVertexPositionBuffer;
+    var triangleVertexColorBuffer;
+    var squareVertexPositionBuffer;
+    var squareVertexColorBuffer;
+	
+	function createTriangleStrip(outlines){
+		var result = [];
+		for(var i=0; i < outlines[0].length; i++){
+			//pointA
+			result.push(degToRad(outlines[0][i].lat()));
+			result.push(degToRad(outlines[0][i].lon()));
+			//result.push(0.0);
+			
+			//pointB
+			result.push(degToRad(outlines[1][i].lat()));
+			result.push(degToRad(outlines[1][i].lon()));
+			//result.push(0.0);
+		}
+		return result;
+	}
+	
+	function createTriangles(outlines){
+		var result = [];
+		for(var i=0; i < outlines[0].length-1; i++){
+			if(!outlines[0][i] || !outlines[0][i+1]) continue;
+			//point1
+			result.push(degToRad(outlines[0][i].lat()));
+			result.push(degToRad(outlines[0][i].lon()));
+			
+			//point2
+			result.push(degToRad(outlines[1][i].lat()));
+			result.push(degToRad(outlines[1][i].lon()));
+			
+			//point3
+			result.push(degToRad(outlines[0][i+1].lat()));
+			result.push(degToRad(outlines[0][i+1].lon()));
+			
+			//point4
+			result.push(degToRad(outlines[1][i].lat()));
+			result.push(degToRad(outlines[1][i].lon()));
+			
+			//point5
+			result.push(degToRad(outlines[1][i+1].lat()));
+			result.push(degToRad(outlines[1][i+1].lon()));
+			
+			//point6
+			result.push(degToRad(outlines[0][i+1].lat()));
+			result.push(degToRad(outlines[0][i+1].lon()));
+		}
+		return result;
+	}
+	
+	function createOutlines(pointsOrig, width){
+		//var pointsOrig = [new LatLon(89.9, 0), new LatLon(-20, 0), new LatLon(20, -40), new LatLon(-90, 40)];
+		//var points = [new LatLon(80, 0), new LatLon(40, 0), new LatLon(0, 0), new LatLon(-40, 0), new LatLon(-80, 0)];//[];
+		var points = [];
+		//refinement
+		
+		for(var i = 0; i < pointsOrig.length-1; i++){
+			if(!pointsOrig[i]) {points.push(pointsOrig[i]);  continue;}
+			points.push(pointsOrig[i]);
+			if(!pointsOrig[i+1]) {continue;}
+			var dist = pointsOrig[i].distanceTo(pointsOrig[i+1]);
+			if(dist > 200){
+				var eps = Math.floor(dist/100);
+				//console.log(eps);
+				for(var j = 1; j < eps; j++){
+					var brng = pointsOrig[i].bearingTo(pointsOrig[i+1]);
+					points.push(pointsOrig[i].destinationPoint(brng, j * 100));
+				}
+			}
+		
+		}
+		
+		points.push(pointsOrig[pointsOrig.length-1]);
+		
+		var pointsA = [];
+		var pointsB = [];
+		//startPoint
+		
+		var brng = points[0].bearingTo(points[1]);
+		pointsA.push(points[0].destinationPoint(brng+90, width));
+		pointsB.push(points[0].destinationPoint(brng-90, width));
+		
+		//betweenPoints
+		for(var i = 1; i < points.length-1; i++){
+			
+			
+		    if(!points[i]) {pointsA.push(points[i]); pointsB.push(points[i]);continue;}
+			if(!points[i+1]) {
+				var brng = points[i-1].bearingTo(points[i]);
+				pointsA.push(points[i].destinationPoint(brng+90, width));
+				pointsB.push(points[i].destinationPoint(brng-90, width));
+				continue;
+			}
+			
+			if(!points[i-1]) {
+				var brng = points[i].bearingTo(points[i+1]);
+				pointsA.push(points[i].destinationPoint(brng+90, width));
+				pointsB.push(points[i].destinationPoint(brng-90, width));
+				continue;
+			}
+			
+			
+			var brng = points[i].bearingTo(points[i+1]);
+			//var brng2 = points[i-1].bearingTo(points[i]);
+			//var brng = (brng1+brng2)/2;
+			pointsA.push(points[i].destinationPoint(brng+90, width));
+			pointsB.push(points[i].destinationPoint(brng-90, width));	
+		}
+														
+		//endPoint
+		var brng = points[points.length-2].finalBearingTo(points[points.length-1]);
+		pointsA.push(points[points.length-1].destinationPoint(brng+90, width));
+		pointsB.push(points[points.length-1].destinationPoint(brng-90, width));
+		
+		return [pointsA, pointsB];
+	}
+	
+	function createOutlinesLoxo(pointsOrig, width){
+		//var pointsOrig = [new LatLon(89.9, 0), new LatLon(-20, 0), new LatLon(20, -40), new LatLon(-90, 40)];
+		//var points = [new LatLon(80, 0), new LatLon(40, 0), new LatLon(0, 0), new LatLon(-40, 0), new LatLon(-80, 0)];//[];
+		var points = [];
+		//refinement
+		for(var i = 0; i < pointsOrig.length-1; i++){
+			if(!pointsOrig[i]) {points.push(pointsOrig[i]); /*console.log('i is false', i, points.length);*/ continue;}
+			points.push(pointsOrig[i]);
+			if(!pointsOrig[i+1]) {/*console.log('i+1 is false', i);*/ continue;}
+			var dist = pointsOrig[i].rhumbDistanceTo(pointsOrig[i+1]);
+			var dist = Math.abs(pointsOrig[i+1].lon() - pointsOrig[i].lon());
+			console.log(dist);
+			if(dist > 6){
+				var eps = Math.floor(dist/3);
+				//console.log(eps);
+				for(var j = 1; j < eps; j++){
+					//var brng = pointsOrig[i].rhumbBearingTo(pointsOrig[i+1]);
+					// brng = 90;
+					//points.push(pointsOrig[i].rhumbDestinationPoint(brng, j * 5));
+					points.push(new LatLon(pointsOrig[i].lat(), pointsOrig[i].lon() + j * 3));
+				}
+			}
+		
+		}
+		points.push(pointsOrig[pointsOrig.length-1]);
+		
+		for(var i=0; i < points.length; i++){if(points[i] != false || points[i] == undefined){ /*console.log(points[i].lon(), points[i].lat());*/}}
+		
+		var pointsA = [];
+		var pointsB = [];
+		//startPoint
+		
+		var brng = points[0].rhumbBearingTo(points[1]);
+		brng = 90;
+		pointsA.push(points[0].destinationPoint(brng+90, width));
+		pointsB.push(points[0].destinationPoint(brng-90, width));
+		
+		//betweenPoints
+		for(var i = 1; i < points.length-1; i++){
+			if(!points[i]) {pointsA.push(points[i]); pointsB.push(points[i]);continue;}
+			if(!points[i+1]) {
+				var brng = points[i-1].rhumbBearingTo(points[i]);
+				brng = 90;
+				pointsA.push(points[i].destinationPoint(brng+90, width));
+				pointsB.push(points[i].destinationPoint(brng-90, width));
+				continue;
+			}
+			
+			if(!points[i-1]) {
+				var brng = points[i].rhumbBearingTo(points[i+1]);
+				brng = 90;
+				pointsA.push(points[i].destinationPoint(brng+90, width));
+				pointsB.push(points[i].destinationPoint(brng-90, width));
+				continue;
+			}
+			
+			var brng = points[i].rhumbBearingTo(points[i+1]);
+		//	var brng2 = points[i-1].rhumbBearingTo(points[i]);
+			//var brng = (brng1+brng2)/2;
+			brng = 90;
+			pointsA.push(points[i].destinationPoint(brng+90, width));
+			pointsB.push(points[i].destinationPoint(brng-90, width));	
+		}
+														
+		//endPoint
+		var brng = points[points.length-2].rhumbBearingTo(points[points.length-1]);
+		brng = 90;
+		pointsA.push(points[points.length-1].destinationPoint(brng+90, width));
+		pointsB.push(points[points.length-1].destinationPoint(brng-90, width));
+		
+		return [pointsA, pointsB];
+	}
+	
+    function initVectorBuffers() {
+       // var outlines = createOutlinesLoxo([new LatLon(60, -180), new LatLon(60, -90), new LatLon(60, 0), new LatLon(60, 90), new LatLon(60, 180)], 40);
+	    var parallels = [];
+		for (var i = -75; i <= 75; i += 15){
+			parallels.push(new LatLon(i, -180));
+			parallels.push(new LatLon(i, 0));
+			parallels.push(new LatLon(i, 180));
+			parallels.push(false);
+		}
+		parallels.pop();
+		var outlines_p = createOutlinesLoxo(parallels, 50);
+		
+		var meridians = [];
+		for (var i = -180; i < 180; i += 15){
+			meridians.push(new LatLon(75, i));
+			meridians.push(new LatLon(0, i));
+			meridians.push(new LatLon(-75, i));
+			meridians.push(false);
+		}
+		meridians.pop();
+		
+		var outlines_m = createOutlines(meridians, 50);
+		//var outlines = createOutlinesLoxo([new LatLon(60, -180), new LatLon(60, 0), new LatLon(60, 180), false, new LatLon(-20, -180), new LatLon(-20, 0), new LatLon(-20, 180), false, new LatLon(15, -180), new LatLon(15, 0), new LatLon(15, 180) ], 40);
+		//var vertices = createTriangleStrip(outlines); 
+		//console.log(outlines);
+		//for(var i=0; outlines[0].length; i++) if(outlines[0][i] != false || outlines[0][i] == undefined) console.log(outlines[0][i].lon());
+		var outlinesA = [];
+		var outlinesB = [];
+		for(var i=0; i < outlines_p[0].length; i++){
+			outlinesA.push(outlines_p[0][i]);
+			outlinesB.push(outlines_p[1][i]);
+		}
+		for(var i=0; i < outlines_m[0].length; i++){
+			outlinesA.push(outlines_m[0][i]);
+			outlinesB.push(outlines_m[1][i]);
+		}
+		outlinesA.push(false);
+		outlinesB.push(false);
+		var outlines = [outlinesA, outlinesB];
+		//var outlines = outlines.concat(outlines_m);
+		var vertices = createTriangles(outlines);
+		
+		triangleVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+        /*var vertices = [
+             degToRad(0.0),  degToRad(0.0),  degToRad(0.0),
+             degToRad(-30.0),  degToRad(30.0),  degToRad(0.0),
+             degToRad(-30.0),  degToRad(-30.0),  degToRad(0.0)
+        ];*/
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        triangleVertexPositionBuffer.itemSize = 2;
+        triangleVertexPositionBuffer.numItems = vertices.length / 2;
+		
+		//gl.enableVertexAttribArray(vectorProgram.vertexPositionAttribute);
+/*
+        triangleVertexColorBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
+        var colors = [
+            1.0, 0.0, 0.0, 1.0,
+            0.0, 1.0, 0.0, 1.0,
+            0.0, 0.0, 1.0, 1.0
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+        triangleVertexColorBuffer.itemSize = 4;
+        triangleVertexColorBuffer.numItems = 3;
+
+
+        squareVertexPositionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+        vertices = [
+             1.0,  1.0,  0.0,
+            -1.0,  1.0,  0.0,
+             1.0, -1.0,  0.0,
+            -1.0, -1.0,  0.0
+        ];
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        squareVertexPositionBuffer.itemSize = 3;
+        squareVertexPositionBuffer.numItems = 4;
+
+        squareVertexColorBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+        colors = [];
+        for (var i=0; i < 4; i++) {
+            colors = colors.concat([0.5, 0.5, 1.0, 1.0]);
+        }
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(colors), gl.STATIC_DRAW);
+        squareVertexColorBuffer.itemSize = 4;
+        squareVertexColorBuffer.numItems = 4;*/
+    }
+	
+	function switchToProgram(program){
+		
+	}
+
+    function drawScene() {
+        gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+        gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+		gl.disable(gl.CULL_FACE);
+        mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+
+        mat4.identity(mvMatrix);
+		mat4.lookAt([0,0,2],[0, 0, 0],[0,1,0], mvMatrix)
+       // mat4.translate(mvMatrix, [0.0, 0.0, 0.0]);
+
+        //mat4.rotate(mvMatrix, degToRad(xRot), [1, 0, 0]);
+        //mat4.rotate(mvMatrix, degToRad(yRot), [0, 1, 0]);
+		
+		gl.useProgram(rasterProgram);
+        gl.bindBuffer(gl.ARRAY_BUFFER, diskVertexPositionBuffer);
+        gl.vertexAttribPointer(rasterProgram.vertexPositionAttribute, diskVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        //gl.bindBuffer(gl.ARRAY_BUFFER, diskVertexTextureCoordBuffer);
+        //gl.vertexAttribPointer(shaderProgram.textureCoordAttribute, diskVertexTextureCoordBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D, crateTextures[filter]);
+        gl.uniform1i(rasterProgram.samplerUniform, 0);
+        /*
+        gl.activeTexture(gl.TEXTURE1);
+        
+        var shiftTexture = gl.createTexture();
+        gl.bindTexture(gl.TEXTURE_2D, shiftTexture);
+        var shiftTextureArray = new Array(
+            0.0, 0.0, 0.0,
+            127.5, 127.5, 127.5,
+            255.0, 255.0, 255.0
+        );
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, 1, 3, 0, gl.RGB, gl.FLOAT, new Float32Array(shiftTextureArray));
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);*/
+        //gl.generateMipmap(gl.TEXTURE_2D);
+
+        //gl.uniform1f(rasterProgram.shiftUniform, 1)
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, diskVertexIndexBuffer);
+        setMatrixUniforms(rasterProgram);
+		
+		var splineVals32 = createSplineVals32();
+        var splineRasterVals32 = createSplineRasterVals32();
+		
+		setRasterUniforms(splineVals32);//splineRasterVals32);
+ 
+       gl.drawElements(gl.TRIANGLES, diskVertexIndexBuffer.numItems, gl.UNSIGNED_SHORT, 0);
+		
+		//----------------//
+		//mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+
+       // mat4.identity(mvMatrix);
+	   
+	  
+	   gl.enable(gl.CULL_FACE);
+	   gl.cullFace(gl.FRONT);
+	   gl.frontFace(gl.CCW);
+	   
+
+        mat4.translate(mvMatrix, [0.0, 0.0, 0.01]);
+		gl.useProgram(vectorProgram);
+		gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
+        gl.vertexAttribPointer(vectorProgram.vertexPositionAttribute, triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+		//gl.vertexAttribPointer(vectorProgram.vertexPositionAttribute_n1, triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 1);
+		//gl.vertexAttribPointer(vectorProgram.vertexPositionAttribute_n2, triangleVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 2);
+
+       // gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexColorBuffer);
+       // gl.vertexAttribPointer(vectorProgram.vertexColorAttribute, triangleVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+		
+		setVectorUniforms(splineVals32);
+        setMatrixUniforms(vectorProgram);
+      gl.drawArrays(gl.TRIANGLES, 0, triangleVertexPositionBuffer.numItems);
+		//gl.drawArrays(gl.POINTS, 0, triangleVertexPositionBuffer.numItems);
+
+/*
+        mat4.translate(mvMatrix, [3.0, 0.0, 0.0]);
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
+        gl.vertexAttribPointer(vectorProgram.vertexPositionAttribute, squareVertexPositionBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexColorBuffer);
+        gl.vertexAttribPointer(vectorProgram.vertexColorAttribute, squareVertexColorBuffer.itemSize, gl.FLOAT, false, 0, 0);
+
+        setMatrixUniforms(vectorProgram);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);*/
+    }
+
+
+    var lastTime = 0;
+
+    function animate() {
+        var timeNow = new Date().getTime();
+        if (lastTime != 0) {
+            var elapsed = timeNow - lastTime;
+
+            xRot += (xSpeed * elapsed) / 1000.0;
+            yRot += (ySpeed * elapsed) / 1000.0;
+        }
+        lastTime = timeNow;
+    }
+
+
+    function tick() {
+        requestAnimFrame(tick);
+        handleKeys();
+        drawScene();
+        //animate();
+    }
+
+    function appStart() {
+        var canvas = document.getElementById("canvas");
+        canvas.height = 800;//screen.height;
+        canvas.width = 800;//screen.height;
+        initGLContext(canvas);
+        initShaders();
+        initRasterBuffers();
+		initVectorBuffers();
+        initTexture();
+
+        gl.clearColor(0.0, 0.0, 0.0, 1.0);
+        gl.enable(gl.DEPTH_TEST);
+ 
+        registerEvents()
+
+        tick();
+    }
+
+</script>
+</head>
+<body onLoad="appStart();">
+<div style="float:left;">
+  <canvas id="canvas" style="border: none;" width="400" height="400"></canvas>
+  </center>
+</div>
+<div style="float:right; width:600px">
+  <canvas id="nav" style="border: 1px solid black;" width="400" height="400"></canvas>
+</div>
+</body>
+</html>
