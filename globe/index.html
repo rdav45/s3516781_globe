@@ -125,7 +125,7 @@ body {
         crateImage.onload = function () {
             handleLoadedTexture(crateTextures)
         }
-        crateImage.src = "data/earth.jpg";
+        crateImage.src = "data/earth.jpg";77
     }
 
 
@@ -687,12 +687,56 @@ body {
         tick();
     }
 
+    function go_fullscreen() {
+                "use strict";
+                var element = document.getElementById("body");
+                element.style.display = "block";
+
+                if (element.requestFullScreen) {
+                    if (!document.fullScreen) {
+                        element.requestFullscreen();
+                    } else {
+                        document.exitFullScreen();
+                    }
+                } else if (element.mozRequestFullScreen) {
+                    if (!document.mozFullScreen) {
+                        element.mozRequestFullScreen();
+                    } else {
+                        document.mozCancelFullScreen();
+                    }
+                } else if (element.webkitRequestFullScreen) {
+                    if (!document.webkitIsFullScreen) {
+                        element.webkitRequestFullScreen();
+                    } else {
+                        document.webkitCancelFullScreen();
+                    }
+                }
+            }
+
+            function end_fullscreen() {
+                "use strict";
+                var element = document.getElementById("renderWindow");
+
+                if (element.requestFullScreen) {
+                    if (!document.fullScreen) {
+                        element.style.display = "none";
+                    }
+                } else if (element.mozRequestFullScreen) {
+                    if (!document.mozFullScreen) {
+                        element.style.display = "none";
+                    }
+                } else if (element.webkitRequestFullScreen) {
+                    if (!document.webkitIsFullScreen) {
+                        element.style.display = "none";
+                    }
+                }
+            }
+            
 </script>
 </head>
-<body onLoad="appStart();">
+<body id = "body" onLoad="appStart();">
 <div style="float:left;">
-  <canvas id="canvas" style="border: none;" width="400" height="400"></canvas>
-  </center>
+  <canvas id="canvas" style="border: none;" width="400" height="400" onclick="go_fullscreen()"></canvas>
 </div>
 <div style="float:right; width:600px">
   <canvas id="nav" style="border: 1px solid black;" width="400" height="400"></canvas>
