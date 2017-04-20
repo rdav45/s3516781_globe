@@ -6,7 +6,7 @@ function registerEvents() {
     document.onkeydown = handleKeyDown;
     document.onkeyup = handleKeyUp;
 
-    document.getElementById("nav").onmousedown = handleMouseDown;
+    document.getElementById("canvas").onmousedown = handleMouseDown;
     document.onmouseup = handleMouseUp;
     document.onmousemove = handleMouseMove;
 }
