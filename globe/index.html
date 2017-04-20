@@ -50,7 +50,7 @@ body {
         }
         
         setupProgram(rasterProgram); 
-       
+  /*     
         vectorProgram = gl.createProgram(); 
         gl.attachShader(vectorProgram, vectorVertexShader[0]);
         gl.attachShader(vectorProgram, vectorFragmentShader[0]);
@@ -61,7 +61,7 @@ body {
         }
         
        setupProgram(vectorProgram);
-
+*/
         
 		/*
         gl.useProgram(rasterProgram);
@@ -614,7 +614,7 @@ body {
 
        // mat4.identity(mvMatrix);
 	   
-	  
+/*	  
 	   gl.enable(gl.CULL_FACE);
 	   gl.cullFace(gl.FRONT);
 	   gl.frontFace(gl.CCW);
@@ -634,7 +634,7 @@ body {
         setMatrixUniforms(vectorProgram);
       gl.drawArrays(gl.TRIANGLES, 0, triangleVertexPositionBuffer.numItems);
 		//gl.drawArrays(gl.POINTS, 0, triangleVertexPositionBuffer.numItems);
-
+*/
 /*
         mat4.translate(mvMatrix, [3.0, 0.0, 0.0]);
         gl.bindBuffer(gl.ARRAY_BUFFER, squareVertexPositionBuffer);
