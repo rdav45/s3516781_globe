@@ -1,6 +1,16 @@
+/*global enter_fullscreen */
+
 var mouseDown = false;
 var lastMouseX = null;
 var lastMouseY = null;
+
+function maximiseCanvasSize() {
+    var canvasContainer = document.getElementById("canvasContainer"),
+            canvas = document.getElementById("canvas"),
+            d = Math.min(canvasContainer.offsetWidth, canvasContainer.offsetHeight);
+    canvas.width = d;
+    canvas.height = d;
+}
 
 function registerEvents() {
     document.onkeydown = handleKeyDown;
@@ -9,6 +19,10 @@ function registerEvents() {
     document.getElementById("canvas").onmousedown = handleMouseDown;
     document.onmouseup = handleMouseUp;
     document.onmousemove = handleMouseMove;
+
+    window.onresize = maximiseCanvasSize;
+    
+    document.addEventListener("fullscreenchange", enter_fullscreen);
 }
 
 function handleMouseDown(event) {

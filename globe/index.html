@@ -9,10 +9,20 @@
         <script type="text/javascript" src="libs/sylvester-0-1-3/sylvester.js"></script>
         <script type="text/javascript" src="src/interaction.js"></script>
         <style>
-            body {
-                margin: 0;
-                overflow: hidden;
-                background-color: #CCC;
+            html, body {
+                height:100%;
+                width:100%;
+                margin:0;
+                padding:0;
+                overflow:hidden;
+                background-color: #000;
+            }
+            #canvasContainer {
+                height:100%;
+                width:100%;
+                padding:0;
+                margin:0;
+                text-align:center; /* horizontally center the canvas element */
             }
         </style>
         <script type="text/javascript">
@@ -181,20 +191,20 @@
                 gl.uniform1f(rasterProgram.meridianRotationUniform, meridian * 6.28 - 3.14);
                 gl.uniform1f(rasterProgram.sinLatPoleUniform, Math.sin(pole * Math.PI / 180));
                 gl.uniform1f(rasterProgram.cosLatPoleUniform, Math.cos(pole * Math.PI / 180));
-                gl.uniform1f(rasterProgram.viewportHeightUniform, gl.viewportHeight);
-                gl.uniform1f(rasterProgram.radiusUniform, radius);
+                gl.uniform1f(rasterProgram.viewportHeightUniform, radius() * 2);
+                gl.uniform1f(rasterProgram.radiusUniform, radius());
                 gl.uniform1fv(rasterProgram.splineValsUniform, splineRasterVals32);
-                //	console.log(meridian, pole, radius);
+                //	console.log(meridian, pole, radius());
             }
 
             function setVectorUniforms(splineVals32) {
                 gl.uniform1f(vectorProgram.meridianRotationUniform, meridian * 6.28 - 3.14);
                 gl.uniform1f(vectorProgram.sinLatPoleUniform, Math.sin(pole * Math.PI / 180));
                 gl.uniform1f(vectorProgram.cosLatPoleUniform, Math.cos(pole * Math.PI / 180));
-                gl.uniform1f(vectorProgram.viewportHeightUniform, gl.viewportHeight);
-                gl.uniform1f(vectorProgram.radiusUniform, radius)
+                gl.uniform1f(vectorProgram.viewportHeightUniform, radius() * 2);
+                gl.uniform1f(vectorProgram.radiusUniform, radius())
                 gl.uniform1fv(vectorProgram.splineValsUniform, splineVals32);
-                //console.log(meridian, pole, radius);
+                //console.log(meridian, pole, radius());
             }
 
 
@@ -218,7 +228,11 @@
             var meridian = 0;
             var pole = 90;
             //FIXME 
-            var radius = 800 / 2.0;
+            // var radius = 800 / 2.0;
+            var radius = function () {
+                var canvas = document.getElementById("canvas");
+                return Math.min(canvas.width, canvas.height) / 2;
+            }
 
             var equatorV = 0;
             var equatorR = 0;
@@ -419,7 +433,7 @@
                     }
                     var dist = pointsOrig[i].rhumbDistanceTo(pointsOrig[i + 1]);
                     var dist = Math.abs(pointsOrig[i + 1].lon() - pointsOrig[i].lon());
-                    console.log(dist);
+                    // console.log(dist);
                     if (dist > 6) {
                         var eps = Math.floor(dist / 3);
                         //console.log(eps);
@@ -583,10 +597,10 @@
             }
 
             function drawScene() {
-                gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
+                gl.viewport(0, 0, radius() * 2, radius() * 2);
                 gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
                 gl.disable(gl.CULL_FACE);
-                mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
+                mat4.perspective(45, 1, 0.1, 100.0, pMatrix);
 
                 mat4.identity(mvMatrix);
                 mat4.lookAt([0, 0, 2], [0, 0, 0], [0, 1, 0], mvMatrix)
@@ -694,8 +708,9 @@
 
             function appStart() {
                 var canvas = document.getElementById("canvas");
-                canvas.height = 800;//screen.height;
-                canvas.width = 800;//screen.height;
+                //canvas.height = 800;//screen.height;
+                //canvas.width = 800;//screen.height;
+                maximiseCanvasSize();
                 initGLContext(canvas);
                 initShaders();
                 initRasterBuffers();
@@ -754,12 +769,17 @@
                     }
                 }
             }
+            
+            function enter_fullscreen() {
+                "use strict";
+                maximiseCanvasSize();
+            }
 
         </script>
     </head>
     <body id = "body" onLoad="appStart();">
-        <div>
-            <canvas id="canvas" style="border: none;" width="400" height="400" ondblclick="go_fullscreen()"></canvas>
+        <div id="canvasContainer">
+            <canvas id="canvas" style="border: none;" ondblclick="go_fullscreen()"></canvas>
         </div>
     </body>
 </html>
