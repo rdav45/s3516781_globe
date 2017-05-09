@@ -51,9 +51,6 @@ function setupProgram(program) {
         program.vertexPositionAttribute = gl.getAttribLocation(program, "aVertexPosition");
         gl.enableVertexAttribArray(program.vertexPositionAttribute);
 
-        //shaderProgram.textureCoordAttribute = gl.getAttribLocation(shaderProgram, "aTextureCoord");
-        //console.log("info: "+ shaderProgram.vertexPositionAttribute);
-
         program.samplerUniform = gl.getUniformLocation(program, "uSampler");
         program.shiftUniform = gl.getUniformLocation(program, "uShift");
 
@@ -61,15 +58,6 @@ function setupProgram(program) {
         // color
         program.vertexPositionAttribute = gl.getAttribLocation(program, "aVertexPosition");
         gl.enableVertexAttribArray(program.vertexPositionAttribute);
-        /*
-         program.vertexPositionAttribute_n1 = gl.getAttribLocation(program, "aVertexPosition_n1");
-         gl.enableVertexAttribArray(program.vertexPositionAttribute_n1);
-         
-         program.vertexPositionAttribute_n2 = gl.getAttribLocation(program, "aVertexPosition_n2");
-         gl.enableVertexAttribArray(program.vertexPositionAttribute_n2);*/
-
-        // program.vertexColorAttribute = gl.getAttribLocation(program, "aVertexColor");
-        //gl.enableVertexAttribArray(program.vertexColorAttribute);
     }
 
     program.pMatrixUniform = gl.getUniformLocation(program, "uPMatrix");

@@ -144,7 +144,7 @@ void main(void) {
 	vec2 xy = vTextureCoord;//-(center);
 	if(length(xyFrag) > uRadius)
 		discard;
-	//gl_FragColor = vec4(1.0,1.0,0.0,0.0);
+	//gl_FragColor = vec4(1.0,0.0,0.0,1.0);
 	else{ 
 		//Projection
 		vec2 lonlat = inverseProjection(xy);
@@ -166,7 +166,7 @@ void main(void) {
 		
 		//0-1
 		lonlat.x = lonlat.x / 2. / M_PI ;
-		lonlat.y = lonlat.y / M_PI + 0.5;
+		lonlat.y = -lonlat.y / M_PI + 0.5;
 		
 		gl_FragColor = texture2D(uSampler, lonlat);
 	}
