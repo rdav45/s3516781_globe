@@ -143,10 +143,10 @@ void main(void) {
 	vec2 xyFrag = gl_FragCoord.xy-(center);
 	vec2 xy = vTextureCoord;//-(center);
 	if(length(xyFrag) > uRadius)
-		discard;
-	//gl_FragColor = vec4(1.0,0.0,0.0,1.0);
+            gl_FragColor = vec4(1.0,0.0,0.0,1.0);
 	else{ 
 		//Projection
+                xy.x = -xy.x; // mirror longitude
 		vec2 lonlat = inverseProjection(xy);
         
         //LatCorrection (splines)
