@@ -1,0 +1,18 @@
+Command Prompt to run Python HTTP Server
+(This needs Python installed to run http://www.python.org)
+
+1. Open Command Prompt (cmd.exe)
+
+2. Obtain and note local IP address of device
+ipconfig
+
+3. Go to location of folder directory needed to run in html
+cd <folder path>
+ eg. cd C:\Users\User1\Globe\globe
+
+4. Start Python HTTP Server (can specify port or leave blank. blank defaults to port 8000
+python -m http.server <port>
+
+5. Open local web browser program and enter <ip address>:8000
+
+This will start the web browser and show the image from the index.html file
