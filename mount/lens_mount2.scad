@@ -1,7 +1,13 @@
-//Copyright (c) 2011, Nirav Patel <http://eclecti.cc>
-//Code for mount was modified from original provided by Nirav Patel
-//to suit the globe, lens and projector used on project
-// original code can be found here https://github.com/nrpatel/SnowGlobe/tree/master/hardware
+/*
+    Copyright (c) 2011, Nirav Patel <http://eclecti.cc>
+    Code for mount was modified from original provided by Nirav Patel to suit the globe, lens and projector used on project
+    
+    The original code can be found here: https://github.com/nrpatel/SnowGlobe/tree/master/hardware 
+
+    Permission to use, copy, modify, and/or distribute this source code for any purpose with or without fee is hereby granted, provided that the above copyright notice and this permission notice appear in all copies.
+
+    THE SOURCE CODE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOURCE CODE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOURCE CODE.
+*/
 
 opteka_r1 = 37.6/2; //groove on top of lens mount
 opteka_r2 = 41.66/2; //depth of lens mount= diameter of lens top
