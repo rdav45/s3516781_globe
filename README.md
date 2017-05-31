@@ -1,5 +1,5 @@
 # s3516781_globe
-RMIT Univesity Dissertation Project
+RMIT Univesity Dissertation Project <br>
 Masters of Applied Science (Geospatial Information Systems)
 
 Copyright (c) 2017, Johannes Liem and Roy Davie
@@ -7,7 +7,7 @@ Permission to use, copy, modify, and/or distribute this source code for any purp
 
 THE SOURCE CODE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES WITH REGARD TO THIS SOURCE CODE INCLUDING ALL IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOURCE CODE.
 
-The mount source code used has been granted permission under Copyright (c) 2011, Nirav Patel <http://eclecti.cc>
+The mount source code used has been granted permission under Copyright (c) 2011, Nirav Patel <http://eclecti.cc> <br>
 The web application software source is protected under Copyright (c) 2017, Johannes Liem and Roy Davie
 
 Title: The World in a Snow-globe: A Physical Interactive Digital Globe for everyone
